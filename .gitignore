@@ -1,0 +1,9 @@
+
+vagrant/.vagrant/*
+packer/packer_cache/*
+*.old
+*.iso
+*.lock
+*.box
+*.txt
+*.jar

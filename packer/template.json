@@ -1,0 +1,95 @@
+{
+  "variables": {
+    "iso_url": "${iso_url}",
+    "iso_checksum": "${iso_checksum}",
+    "iso_checksum_type": "${iso_checksum_type}",
+    "ssh_username": "${ssh_username}",
+    "ssh_password": "${ssh_password}",
+    "http_directory": "${http_directory}",
+    "preseed_file": "${preseed_file}",
+    "memory": "${memory}",
+    "cpus": "${cpus}",
+    "scripts": "${scripts}",
+    "vagrant_file": "${vagrant_file}",
+    "description": "${description}"
+  },
+    "builders": [
+      {
+        "type": "virtualbox-iso",
+        "guest_os_type": "Debian_64",
+        "iso_url": "{{user `iso_url`}}",
+        "iso_checksum": "{{user `iso_checksum`}}",
+        "iso_checksum_type": "{{user `iso_checksum_type`}}",
+        "disk_size":"40960",
+        "communicator": "ssh",
+        "ssh_username": "{{user `ssh_username`}}",
+        "ssh_password": "{{user `ssh_password`}}",
+        "ssh_wait_timeout": "30m",
+        "http_directory": "{{user `http_directory` }}",
+        "shutdown_command": "echo 'packer' | sudo -S /sbin/shutdown -hP now",
+        "vm_name": "kali-vagrant",
+        "virtualbox_version_file": ".vbox_version",
+        "guest_additions_mode": "disable",
+        "vboxmanage": [
+            [
+                "modifyvm",
+                "{{.Name}}",
+                "--memory",
+                "{{user `memory`}}"
+            ],
+            [
+                "modifyvm",
+                "{{.Name}}",
+                "--cpus",
+                "{{user `cpus` }}"
+            ]
+        ],
+        "boot_wait": "5s",
+        "boot_command": [
+        "<esc><wait>",
+        "/install/vmlinuz noapic ",
+        "preseed/url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/{{user `preseed_file`}} ",
+        "hostname={{ .Name }} ",
+        "auto=true ",
+        "interface=auto ",
+        "domain=vm ",
+        "initrd=/install/initrd.gz -- <enter>"
+        ]
+      }
+    ],
+    "provisioners": [{
+        "type": "file",
+        "source": "../data/tools/burpsuite",
+        "destination": "/tmp"
+      },{
+        "environment_vars": [
+            "HOME_DIR=/root"
+        ],
+        "execute_command": "echo 'vagrant' | {{.Vars}} sudo -S -E sh -eux '{{.Path}}'",
+        "expect_disconnect": true,
+        "scripts": [ 
+            "{{user `scripts`}}/update.sh",
+            "{{user `scripts`}}/burpsuite.sh",
+            "{{user `scripts`}}/sshd.sh",
+            "{{user `scripts`}}/vagrant.sh",
+            "{{user `scripts`}}/docker.sh",
+            "{{user `scripts`}}/networking.sh",
+            "{{user `scripts`}}/customization.sh",
+            "{{user `scripts`}}/virtualbox.sh",
+            "{{user `scripts`}}/minimize.sh"
+        ],
+        "type":"shell"
+      }],
+    "post-processors": [
+      [
+        {
+          "type": "vagrant",
+          "output": "red-{{.Provider}}.box",
+          "compression_level":9,
+          "vagrantfile_template": "{{user `vagrant_file` }}",
+          "only": ["virtualbox-iso"]
+        }
+      ]
+    ],
+    "description": "{{user `description`}}"
+  }
